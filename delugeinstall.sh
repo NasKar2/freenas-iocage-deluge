@@ -166,10 +166,11 @@ iocage exec ${JAIL_NAME} sysrc "openvpn_configfile=/config/openvpn.conf"
 
 iocage exec ${JAIL_NAME} service ipfw start
 iocage exec ${JAIL_NAME} service openvpn start
-iocage exec ${JAIL_NAME} service transmission start
 
 
 iocage exec ${JAIL_NAME} service deluge_web start
+iocage exec ${JAIL_NAME} sed -i '' 's/\"allow_remote": \false/\"allow_remote": \true/g' /configs/core.conf
+iocage restart ${JAIL_NAME} 
 echo "deluge should be available at http://${JAIL_IP}:8112"
 
 exit
