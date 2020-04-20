@@ -87,14 +87,6 @@ then
 fi
 rm /tmp/pkg.json
 
-# fix 'libdl.so.1 missing' error in 11.1 versions, by reinstalling packages from older FreeBSD release
-# source: https://forums.freenas.org/index.php?threads/openvpn-fails-in-jail-with-libdl-so-1-not-found-error.70391/
-if [ "${RELEASE}" = "11.1-RELEASE" ]; then
-  iocage exec ${JAIL_NAME} sed -i '' "s/quarterly/release_2/" /etc/pkg/FreeBSD.conf
-  iocage exec ${JAIL_NAME} pkg update -f
-  iocage exec ${JAIL_NAME} pkg upgrade -yf
-fi
-
 #
 # needed for installing from ports
 #mkdir -p ${PORTS_PATH}/ports
@@ -107,11 +99,7 @@ chown -R media:media ${POOL_PATH}/${MEDIA_LOCATION}
 echo "mkdir -p '${POOL_PATH}/${APPS_PATH}/${DELUGE_DATA}'"
 
 deluge_config=${POOL_PATH}/${APPS_PATH}/${DELUGE_DATA}
-#radarr_config=${POOL_PATH}/${APPS_PATH}/${RADARR_DATA}
-#lidarr_config=${POOL_PATH}/${APPS_PATH}/${LIDARR_DATA}
-#sabnzbd_config=${POOL_PATH}/${APPS_PATH}/${SABNZBD_DATA}
-#plex_config=${POOL_PATH}/${APPS_PATH}/${PLEX_DATA}
-#iocage exec ${JAIL_NAME} mkdir -p /mnt/configs
+
 iocage exec ${JAIL_NAME} 'sysrc ifconfig_epair0_name="epair0b"'
 
 # create dir in jail for mount points
@@ -131,23 +119,32 @@ iocage fstab -a ${JAIL_NAME} ${CONFIGS_PATH} /mnt/configs nullfs rw 0 0
 iocage fstab -a ${JAIL_NAME} ${deluge_config} /config nullfs rw 0 0
 iocage fstab -a ${JAIL_NAME} ${POOL_PATH}/${MEDIA_LOCATION} /mnt/media nullfs rw 0 0
 iocage fstab -a ${JAIL_NAME} ${POOL_PATH}/${TORRENTS_LOCATION} /mnt/torrents nullfs rw 0 0
+ 
+if [ $RELEASE_OLD -eq 1 ]; then
+ # iocage exec ${JAIL_NAME} sed -i '' "s/quarterly/release_2/" /etc/pkg/FreeBSD.conf
+# iocage exec ${JAIL_NAME} mkdir -p /usr/local/etc/pkg/repo/
+  iocage exec ${JAIL_NAME} cp -f /mnt/configs/FreeBSD.conf /usr/local/etc/pkg/repo/FreeBSD.conf
+  iocage exec ${JAIL_NAME} pkg update -f
+  iocage exec ${JAIL_NAME} pkg upgrade -yf
+fi
+
 
 iocage restart ${JAIL_NAME}
 # add media user
 iocage exec ${JAIL_NAME} "pw user add media -c media -u 8675309  -d /nonexistent -s /usr/bin/nologin"  
 # add media group to media user
-iocage exec ${JAIL_NAME} pw groupadd -n media -g 8675309
-iocage exec ${JAIL_NAME} pw groupmod media -m media
-iocage restart ${JAIL_NAME} 
+#iocage exec ${JAIL_NAME} pw groupadd -n media -g 8675309
+#iocage exec ${JAIL_NAME} pw groupmod media -m media
+#iocage restart ${JAIL_NAME} 
 
-iocage exec ${JAIL_NAME} chown -R media:media /config
+#iocage exec ${JAIL_NAME} chown -R media:media /config
 iocage exec ${JAIL_NAME} sysrc deluged_enable=YES
-iocage exec ${JAIL_NAME} sysrc deluged_user=media
-iocage exec ${JAIL_NAME} sysrc deluged_group=media
+#iocage exec ${JAIL_NAME} sysrc deluged_user=media
+#iocage exec ${JAIL_NAME} sysrc deluged_group=media
 iocage exec ${JAIL_NAME} sysrc deluged_confdir=/config
 iocage exec ${JAIL_NAME} sysrc deluge_web_enable=YES
-iocage exec ${JAIL_NAME} sysrc deluge_web_user=media
-iocage exec ${JAIL_NAME} sysrc deluge_web_group=media
+#iocage exec ${JAIL_NAME} sysrc deluge_web_user=media
+#iocage exec ${JAIL_NAME} sysrc deluge_web_group=media
 iocage exec ${JAIL_NAME} sysrc deluge_web_confdir=/config
 
 # ipfw_rules
@@ -188,6 +185,7 @@ iocage exec ${JAIL_NAME} cp -f /mnt/configs/deluge /usr/local/etc/rc.d/deluge
 iocage exec ${JAIL_NAME} chmod u+x /usr/local/etc/rc.d/deluge
 iocage exec ${JAIL_NAME} sed -i '' "s/delugedata/${DELUGE_DATA}/" /usr/local/etc/rc.d/deluge
 iocage exec ${JAIL_NAME} sysrc "deluge_enable=YES"
+iocage exec ${JAIL_NAME} sysrc "deluge_user=media"
 iocage exec ${JAIL_NAME} service deluge start
 echo "deluge installed"
 
