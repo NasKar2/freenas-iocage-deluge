@@ -19,16 +19,20 @@ DELUGE_DATA= will create a data directory /mnt/v1/apps/deluge to store all the d
 
 TORRENTS_LOCATION will set the location of your torrent files, in this example /mnt/v1/torrents
 
+RELEASE_OLD=1 make jail use old repo Release_1
+
 ```
-JAIL_IP="192.168.5.51"
+JAIL_IP="192.168.5.86"
 DEFAULT_GW_IP="192.168.5.1"
+JAIL_NAME="deluge"
 INTERFACE="vnet0"
 VNET="on"
 POOL_PATH="/mnt/v1"
 APPS_PATH="apps"
-JAIL_NAME="deluge"
-deluge_DATA="deluge"
+DELUGE_DATA="deluge"
 TORRENTS_LOCATION="torrents"
+RELEASE_OLD=1
+
 ```
 
 ## Install Deluge in a Jail

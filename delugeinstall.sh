@@ -121,6 +121,7 @@ iocage fstab -a ${JAIL_NAME} ${POOL_PATH}/${MEDIA_LOCATION} /mnt/media nullfs rw
 iocage fstab -a ${JAIL_NAME} ${POOL_PATH}/${TORRENTS_LOCATION} /mnt/torrents nullfs rw 0 0
  
 if [ $RELEASE_OLD -eq 1 ]; then
+echo "RELEASE_OLD = "${RELEASE_OLD}
  # iocage exec ${JAIL_NAME} sed -i '' "s/quarterly/release_2/" /etc/pkg/FreeBSD.conf
 # iocage exec ${JAIL_NAME} mkdir -p /usr/local/etc/pkg/repo/
   iocage exec ${JAIL_NAME} cp -f /mnt/configs/FreeBSD.conf /usr/local/etc/pkg/repo/FreeBSD.conf
@@ -165,8 +166,19 @@ iocage exec ${JAIL_NAME} sysrc "openvpn_configfile=/config/openvpn.conf"
 iocage exec ${JAIL_NAME} service ipfw start
 iocage exec ${JAIL_NAME} service openvpn start
 
+# Change deluged_user in deluged
+old_user='deluged_user:="asjklasdfjklasdf"'
+new_user='deluged_user:="media"'
+iocage exec ${JAIL_NAME} sed -i '' "s|${old_user}|${new_user}|" /usr/local/etc/rc.d/deluged
+
+# Change deluge_web_user in deluge_web
+old2_user='deluge_web_user:="asjklasdfjklasdf"'
+new2_user='deluge_web_user:="media"'
+iocage exec ${JAIL_NAME} sed -i '' "s|${old2_user}|${new2_user}|" /usr/local/etc/rc.d/deluge_web
+
 
 iocage exec ${JAIL_NAME} service deluge_web start
+iocage exec ${JAIL_NAME} service deluged start
 iocage exec ${JAIL_NAME} sed -i '' 's/\"allow_remote": \false/\"allow_remote": \true/g' /configs/core.conf
 iocage restart ${JAIL_NAME} 
 echo "deluge should be available at http://${JAIL_IP}:8112"
