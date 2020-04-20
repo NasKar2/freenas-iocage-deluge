@@ -123,7 +123,7 @@ iocage fstab -a ${JAIL_NAME} ${POOL_PATH}/${TORRENTS_LOCATION} /mnt/torrents nul
 if [ $RELEASE_OLD -eq 1 ]; then
 echo "RELEASE_OLD = "${RELEASE_OLD}
  # iocage exec ${JAIL_NAME} sed -i '' "s/quarterly/release_2/" /etc/pkg/FreeBSD.conf
-# iocage exec ${JAIL_NAME} mkdir -p /usr/local/etc/pkg/repo/
+  iocage exec ${JAIL_NAME} mkdir -p /usr/local/etc/pkg/repo/
   iocage exec ${JAIL_NAME} cp -f /mnt/configs/FreeBSD.conf /usr/local/etc/pkg/repo/FreeBSD.conf
   iocage exec ${JAIL_NAME} pkg update -f
   iocage exec ${JAIL_NAME} pkg upgrade -yf
