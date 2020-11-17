@@ -24,8 +24,7 @@ SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 . $SCRIPTPATH/deluge-config
 CONFIGS_PATH=$SCRIPTPATH/configs
-RELEASE="11.3-RELEASE"
-#RELEASE=$(freebsd-version | sed "s/STABLE/RELEASE/g")
+RELEASE=$(freebsd-version | cut -d - -f -1)"-RELEASE"
 
 # Check for deluge-config and set configuration
 if ! [ -e $SCRIPTPATH/deluge-config ]; then
@@ -43,37 +42,35 @@ if [ -z $DEFAULT_GW_IP ]; then
   exit 1
 fi
 if [ -z $INTERFACE ]; then
-  echo 'Configuration error: INTERFACE must be set'
-  exit 1
+  INTERFACE="vnet0"
+  echo "INTERFACE defaulting to 'vnet0'"                                                        
 fi
-if [ -z $POOL_PATH ]; then
-  echo 'Configuration error: POOL_PATH must be set'
-  exit 1
+if [ -z $VNET ]; then
+  VNET="on"
+  echo "VNET defaulting to 'on'"
 fi
 
+if [ -z $POOL_PATH ]; then
+  POOL_PATH="/mnt/$(iocage get -p)"
+  echo "POOL_PATH defaulting to "$POOL_PATH
+fi
 if [ -z $APPS_PATH ]; then
-  echo 'Configuration error: APPS_PATH must be set'
-  exit 1
+  APPS_PATH="apps"
+  echo "APPS_PATH defaulting to 'apps'"
 fi
 
 if [ -z $JAIL_NAME ]; then
-  echo 'Configuration error: JAIL_NAME must be set'
-  exit 1
+  JAIL_NAME="deluge"
+  echo "JAIL_NAME defaulting to 'deluge'"
 fi
-
 if [ -z $DELUGE_DATA ]; then
-  echo 'Configuration error: DELUGE_DATA must be set'
-  exit 1
-fi
-
-if [ -z $MEDIA_LOCATION ]; then
-  echo 'Configuration error: MEDIA_LOCATION must be set'
-  exit 1
+  DELUGE_DATA="deluge"
+  echo "DELUGE_DATA defaulting to 'deluge'"
 fi
 
 if [ -z $TORRENTS_LOCATION ]; then
-  echo 'Configuration error: TORRENTS_LOCATION must be set'
-  exit 1
+  TORRENTS_LOCATION="torrents"
+  echo "TORRENTS_LOCATION defaulting to 'torrents'"
 fi
 
 #
