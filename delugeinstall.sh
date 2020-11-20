@@ -12,7 +12,7 @@ fi
 JAIL_IP=""
 DEFAULT_GW_IP=""
 INTERFACE=""
-VNET="off"
+VNET=""
 POOL_PATH=""
 APPS_PATH=""
 DELUGE_DATA=""
@@ -67,7 +67,10 @@ if [ -z $DELUGE_DATA ]; then
   DELUGE_DATA="deluge"
   echo "DELUGE_DATA defaulting to 'deluge'"
 fi
-
+if [ -z $MEDIA_LOCATION ]; then
+  MEDIA_LOCATION="media"
+  echo "MEDIA_LOCATION defaulting to 'media'"
+fi
 if [ -z $TORRENTS_LOCATION ]; then
   TORRENTS_LOCATION="torrents"
   echo "TORRENTS_LOCATION defaulting to 'torrents'"
@@ -92,7 +95,7 @@ rm /tmp/pkg.json
 mkdir -p ${POOL_PATH}/${APPS_PATH}/${DELUGE_DATA}
 mkdir -p ${POOL_PATH}/${MEDIA_LOCATION}/videos/tvshows
 mkdir -p ${POOL_PATH}/${TORRENTS_LOCATION}
-chown -R media:media ${POOL_PATH}/${MEDIA_LOCATION}
+#chown -R media:media ${POOL_PATH}/${MEDIA_LOCATION}
 echo "mkdir -p '${POOL_PATH}/${APPS_PATH}/${DELUGE_DATA}'"
 
 deluge_config=${POOL_PATH}/${APPS_PATH}/${DELUGE_DATA}
@@ -117,16 +120,6 @@ iocage fstab -a ${JAIL_NAME} ${deluge_config} /config nullfs rw 0 0
 iocage fstab -a ${JAIL_NAME} ${POOL_PATH}/${MEDIA_LOCATION} /mnt/media nullfs rw 0 0
 iocage fstab -a ${JAIL_NAME} ${POOL_PATH}/${TORRENTS_LOCATION} /mnt/torrents nullfs rw 0 0
  
-if [ $RELEASE_OLD -eq 1 ]; then
-echo "RELEASE_OLD = "${RELEASE_OLD}
- # iocage exec ${JAIL_NAME} sed -i '' "s/quarterly/release_2/" /etc/pkg/FreeBSD.conf
-  iocage exec ${JAIL_NAME} mkdir -p /usr/local/etc/pkg/repo/
-  iocage exec ${JAIL_NAME} cp -f /mnt/configs/FreeBSD.conf /usr/local/etc/pkg/repo/FreeBSD.conf
-  iocage exec ${JAIL_NAME} pkg update -f
-  iocage exec ${JAIL_NAME} pkg upgrade -yf
-fi
-
-
 iocage restart ${JAIL_NAME}
 # add media user
 iocage exec ${JAIL_NAME} "pw user add media -c media -u 8675309  -d /nonexistent -s /usr/bin/nologin"  
@@ -135,22 +128,34 @@ iocage exec ${JAIL_NAME} "pw user add media -c media -u 8675309  -d /nonexistent
 #iocage exec ${JAIL_NAME} pw groupmod media -m media
 #iocage restart ${JAIL_NAME} 
 
-#iocage exec ${JAIL_NAME} chown -R media:media /config
+iocage exec ${JAIL_NAME} chown -R media:media /config
 iocage exec ${JAIL_NAME} sysrc deluged_enable=YES
-#iocage exec ${JAIL_NAME} sysrc deluged_user=media
-#iocage exec ${JAIL_NAME} sysrc deluged_group=media
+iocage exec ${JAIL_NAME} sysrc deluged_user=media
+iocage exec ${JAIL_NAME} sysrc deluged_group=media
 iocage exec ${JAIL_NAME} sysrc deluged_confdir=/config
 iocage exec ${JAIL_NAME} sysrc deluge_web_enable=YES
-#iocage exec ${JAIL_NAME} sysrc deluge_web_user=media
-#iocage exec ${JAIL_NAME} sysrc deluge_web_group=media
+iocage exec ${JAIL_NAME} sysrc deluge_web_user=media
+iocage exec ${JAIL_NAME} sysrc deluge_web_group=media
 iocage exec ${JAIL_NAME} sysrc deluge_web_confdir=/config
 
-# ipfw_rules
+# copy openvpn files from configs dir
 iocage exec ${JAIL_NAME} cp -f /mnt/configs/ipfw_rules /config/ipfw_rules
-  
-# openvpn.conf
 iocage exec ${JAIL_NAME} cp -f /mnt/configs/openvpn.conf /config/openvpn.conf
-iocage exec ${JAIL_NAME} cp -f /mnt/configs/pass.txt /config/pass.txt
+iocage exec ${JAIL_NAME} cp -f /mnt/configs/pass.privado.txt /config/pass.privado.txt
+
+# check tun mumber
+iocage exec ${JAIL_NAME} 'ifconfig tun create'
+TUN_NUM=$(iocage exec ${JAIL_NAME} ifconfig | grep tun | cut -d : -f1 | grep tun)
+echo "TUN_NUM is ${TUN_NUM}"
+SUBNET=$(iocage get ip4_addr ${JAIL_NAME} | cut -d / -f2)
+echo "SUBNET is ${SUBNET}"
+IP_ID=${DEFAULT_GW_IP%.*}".0/"${SUBNET}
+echo "IP_ID is ${IP_ID}"
+iocage exec ${JAIL_NAME} sed -i '' "s|mytun|${TUN_NUM}|" /config/ipfw_rules
+iocage exec ${JAIL_NAME} sed -i '' "s|IP_ID|${IP_ID}|g" /config/ipfw_rules
+iocage exec ${JAIL_NAME} sed -i '' "s|dev\ tun|dev\ ${TUN_NUM}|" /config/openvpn.conf
+
+
 
 iocage exec ${JAIL_NAME} "chown 0:0 /config/ipfw_rules"
 iocage exec ${JAIL_NAME} "chmod 600 /config/ipfw_rules"
@@ -172,52 +177,9 @@ iocage exec ${JAIL_NAME} sed -i '' "s|${old_user}|${new_user}|" /usr/local/etc/r
 old2_user='deluge_web_user:="asjklasdfjklasdf"'
 new2_user='deluge_web_user:="media"'
 iocage exec ${JAIL_NAME} sed -i '' "s|${old2_user}|${new2_user}|" /usr/local/etc/rc.d/deluge_web
-
-
-iocage exec ${JAIL_NAME} service deluge_web start
+iocage exec ${JAIL_NAME} chown -R media:media /config
 iocage exec ${JAIL_NAME} service deluged start
+iocage exec ${JAIL_NAME} service deluge_web start
 iocage exec ${JAIL_NAME} sed -i '' 's/\"allow_remote": \false/\"allow_remote": \true/g' /configs/core.conf
 iocage restart ${JAIL_NAME} 
 echo "deluge should be available at http://${JAIL_IP}:8112"
-
-exit
-#
-# Install deluge
-iocage exec ${JAIL_NAME} ln -s /usr/local/bin/mono /usr/bin/mono
-iocage exec ${JAIL_NAME} "fetch http://download.deluge.tv/v2/master/mono/NzbDrone.master.tar.gz -o /usr/local/share"
-iocage exec ${JAIL_NAME} "tar -xzvf /usr/local/share/NzbDrone.master.tar.gz -C /usr/local/share"
-iocage exec ${JAIL_NAME} "rm /usr/local/share/NzbDrone.master.tar.gz"
-iocage exec ${JAIL_NAME} "pw user add media -c media -u 8675309  -d /nonexistent -s /usr/bin/nologin"
-iocage exec ${JAIL_NAME} chown -R media:media /usr/local/share/NzbDrone /config
-iocage exec ${JAIL_NAME} -- mkdir /usr/local/etc/rc.d
-iocage exec ${JAIL_NAME} cp -f /mnt/configs/deluge /usr/local/etc/rc.d/deluge
-iocage exec ${JAIL_NAME} chmod u+x /usr/local/etc/rc.d/deluge
-iocage exec ${JAIL_NAME} sed -i '' "s/delugedata/${DELUGE_DATA}/" /usr/local/etc/rc.d/deluge
-iocage exec ${JAIL_NAME} sysrc "deluge_enable=YES"
-iocage exec ${JAIL_NAME} sysrc "deluge_user=media"
-iocage exec ${JAIL_NAME} service deluge start
-echo "deluge installed"
-
-#
-# Make pkg upgrade get the latest repo
-iocage exec ${JAIL_NAME} mkdir -p /usr/local/etc/pkg/repos/
-iocage exec ${JAIL_NAME} cp -f /mnt/configs/FreeBSD.conf /usr/local/etc/pkg/repos/FreeBSD.conf
-
-#
-# Upgrade to the lastest repo
-iocage exec ${JAIL_NAME} pkg upgrade -y
-iocage restart ${JAIL_NAME}
-
-#
-# remove /mnt/configs as no longer needed
-#iocage fstab -r ${JAIL_NAME} ${CONFIGS_PATH} /mnt/configs nullfs rw 0 0
-
-#
-# Make media owner of data directories
-chown -R media:media ${POOL_PATH}/${MEDIA_LOCATION}
-chown -R media:media ${POOL_PATH}/${TORRENTS_LOCATION}
-
-echo
-
-echo "deluge should be available at http://${JAIL_IP}:8989"
-echo "TV Shows will be located at "${POOL_PATH}/${MEDIA_LOCATION}/videos/tvshows
