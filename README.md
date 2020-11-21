@@ -20,13 +20,13 @@ Edit file deluge-config
 ### Optional Parameters
 
 - JAIL_NAME : Defaults to "deluge"
--INTERFACE : Defaults to "vnet0"
--VNET : Defaults to "on"
--POOL_PATH : Defaults to your pool in my system it is "/mnt/v1"
--APPS_PATH : Defaults to "apps"
--DELUGE_DATA : Defaults to "deluge" in my system it is "/mnt/v1/apps/deluge"
--MEDIA_LOCATION : Defaults to "media"
--TORRENTS_LOCATION : Defaults to "torrents"
+- INTERFACE : Defaults to "vnet0"
+- VNET : Defaults to "on"
+- POOL_PATH : Defaults to your pool in my system it is "/mnt/v1"
+- APPS_PATH : Defaults to "apps"
+- DELUGE_DATA : Defaults to "deluge" in my system it is "/mnt/v1/apps/deluge"
+- MEDIA_LOCATION : Defaults to "media"
+- TORRENTS_LOCATION : Defaults to "torrents"
 
 ```
 JAIL_IP="192.168.5.86"
