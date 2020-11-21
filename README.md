@@ -6,20 +6,27 @@ Scripts to create an iocage jail on Freenas 11.3U2
 
 Deluge  will be placed in a jail with separate data directory (/mnt/v1/apps/deluge) to allow for easy reinstallation/backup.
 
-Deluge  will be installed with the default user/group (media/media)
+Deluge  will be installed with the default user/group (media/media) to match other apps
+
+Deluge will download to the <POOL_PATH>/<TORRENTS_LOCATION>/deluge directory by default in my system "/mnt/v1/torrent/deluge"
 
 
 ## Prerequisites
 Edit file deluge-config
 
-Edit deluge-config file with the name of your jail, your network information and directory data name you want to use and location of your media files and torrents.
+- JAIL_IP : The IP address of this jail
+- DEFAULT_GW_IP : Default gateway
 
-DELUGE_DATA= will create a data directory /mnt/v1/apps/deluge to store all the data for that app.
+### Optional Parameters
 
-
-TORRENTS_LOCATION will set the location of your torrent files, in this example /mnt/v1/torrents
-
-RELEASE_OLD=1 make jail use old repo Release_1
+- JAIL_NAME : Defaults to "deluge"
+-INTERFACE : Defaults to "vnet0"
+-VNET : Defaults to "on"
+-POOL_PATH : Defaults to your pool in my system it is "/mnt/v1"
+-APPS_PATH : Defaults to "apps"
+-DELUGE_DATA : Defaults to "deluge" in my system it is "/mnt/v1/apps/deluge"
+-MEDIA_LOCATION : Defaults to "media"
+-TORRENTS_LOCATION : Defaults to "torrents"
 
 ```
 JAIL_IP="192.168.5.86"
@@ -30,10 +37,54 @@ VNET="on"
 POOL_PATH="/mnt/v1"
 APPS_PATH="apps"
 DELUGE_DATA="deluge"
+MEDIA_LOCATION="media"
 TORRENTS_LOCATION="torrents"
-RELEASE_OLD=1
 
 ```
+
+## OpenVPN setup
+
+If you are going to going to use the vpn, you will need add a preinit task in the webui to run the following command as well as run it once before you setup the jail. This adds a rule to t>
+devfs rule -s 4 add path 'tun*' unhide
+
+Firewall kill switch to turn off deluge if the VPN goes down is setup by default in the ipfw_rules file.  Appropriate changes to the file are performed by the script.
+
+Create openvpn.conf and pass.txt files in configs directory. Example files shown, you have to edit the details with info supplied by your VPN provider.
+```
+client
+dev tun
+proto udp
+remote vpnaddress.com 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+persist-remote-ip
+ca vpn.crt
+
+tls-client
+remote-cert-tls server
+#auth-user-pass
+auth-user-pass /config/pass.txt
+comp-lzo
+verb 3
+
+auth SHA256
+cipher AES-256-CBC
+
+<ca>
+-----BEGIN CERTIFICATE-----
+MIIESDC...............
+-----END CERTIFICATE-----
+</ca>
+
+```
+pass.txt
+```
+vpn_username
+vpn_password
+```
+
 
 ## Install Deluge in a Jail
 
@@ -45,4 +96,4 @@ Run this command to install deluge
 
 # Issues
 
-Current version of libtorrent is not compatable with deluge-cli
+
