@@ -17,6 +17,11 @@ Edit file deluge-config
 - JAIL_IP : The IP address of this jail
 - DEFAULT_GW_IP : Default gateway
 
+```
+JAIL_IP="192.168.5.86"
+DEFAULT_GW_IP="192.168.5.1"
+```
+
 ### Optional Parameters
 
 - JAIL_NAME : Defaults to "deluge"
