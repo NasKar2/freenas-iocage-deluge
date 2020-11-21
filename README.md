@@ -49,7 +49,8 @@ TORRENTS_LOCATION="torrents"
 
 ## OpenVPN setup
 
-If you are going to going to use the vpn, you will need add a preinit task in the webui to run the following command as well as run it once before you setup the jail. This adds a rule to t>
+If you are going to going to use the vpn, you will need add a preinit task in the webui to run the following command as well as run it once before you setup the jail.
+This adds a rule to the default devfs_ruleset applied to all iocage jails to allow them to access tun devices.
 devfs rule -s 4 add path 'tun*' unhide
 
 Firewall kill switch to turn off deluge if the VPN goes down is setup by default in the ipfw_rules file.  Appropriate changes to the file are performed by the script.
