@@ -108,7 +108,7 @@ iocage exec ${JAIL_NAME} mkdir -p /var/db/portsnap
 iocage exec ${JAIL_NAME} mkdir -p /config
 iocage exec ${JAIL_NAME} mkdir -p /mnt/media
 iocage exec ${JAIL_NAME} mkdir -p /mnt/configs
-iocage exec ${JAIL_NAME} mkdir -p /mnt/torrents
+iocage exec ${JAIL_NAME} mkdir -p /mnt/torrents/deluge
 
 #
 # mount ports so they can be accessed in the jail
@@ -122,7 +122,7 @@ iocage fstab -a ${JAIL_NAME} ${POOL_PATH}/${TORRENTS_LOCATION} /mnt/torrents nul
  
 iocage restart ${JAIL_NAME}
 # add media user
-iocage exec ${JAIL_NAME} "pw user add media -c media -u 8675309  -d /nonexistent -s /usr/bin/nologin"  
+iocage exec ${JAIL_NAME} "pw user add media -c media -u 8675309  -d /config -s /usr/bin/nologin"  
 # add media group to media user
 #iocage exec ${JAIL_NAME} pw groupadd -n media -g 8675309
 #iocage exec ${JAIL_NAME} pw groupmod media -m media
@@ -180,6 +180,9 @@ iocage exec ${JAIL_NAME} sed -i '' "s|${old2_user}|${new2_user}|" /usr/local/etc
 iocage exec ${JAIL_NAME} chown -R media:media /config
 iocage exec ${JAIL_NAME} service deluged start
 iocage exec ${JAIL_NAME} service deluge_web start
-iocage exec ${JAIL_NAME} sed -i '' 's/\"allow_remote": \false/\"allow_remote": \true/g' /configs/core.conf
-iocage restart ${JAIL_NAME} 
+iocage exec ${JAIL_NAME} service deluged stop
+#iocage exec ${JAIL_NAME} service deluge_web stop
+iocage exec ${JAIL_NAME} sed -i '' 's|"/Downloads"|"/mnt/torrents/deluge"|g' /config/core.conf
+iocage exec ${JAIL_NAME} service deluged start
+#iocage restart ${JAIL_NAME} 
 echo "deluge should be available at http://${JAIL_IP}:8112"
