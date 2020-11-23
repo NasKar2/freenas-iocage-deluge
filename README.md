@@ -32,6 +32,7 @@ DEFAULT_GW_IP="192.168.5.1"
 - DELUGE_DATA : Defaults to "deluge" in my system it is "/mnt/v1/apps/deluge"
 - MEDIA_LOCATION : Defaults to "media"
 - TORRENTS_LOCATION : Defaults to "torrents"
+- SEED : Defaults to "". If you don't want to seed set it to "NO".
 
 ```
 JAIL_IP="192.168.5.86"
@@ -44,6 +45,7 @@ APPS_PATH="apps"
 DELUGE_DATA="deluge"
 MEDIA_LOCATION="media"
 TORRENTS_LOCATION="torrents"
+SEED=""
 
 ```
 

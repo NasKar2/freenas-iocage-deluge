@@ -1,6 +1,17 @@
 #!/bin/sh
-# Build an iocage jail under FreeNAS 11.1 with  deluge
+# Build an iocage jail under FreeNAS 11.1 or TrueNAS 12.2 with  deluge
 # https://github.com/NasKar2/sepapps-freenas-iocage
+
+print_msg () {
+  echo
+  echo -e "\e[1;32m"$1"\e[0m"
+  echo
+}
+
+print_err () {
+  echo -e "\e[1;31m"$1"\e[0m"
+  echo
+}
 
 # Check for root privileges
 if ! [ $(id -u) = 0 ]; then
@@ -18,7 +29,7 @@ APPS_PATH=""
 DELUGE_DATA=""
 MEDIA_LOCATION=""
 TORRENTS_LOCATION=""
-
+SEED=""
 
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
@@ -28,7 +39,7 @@ RELEASE=$(freebsd-version | cut -d - -f -1)"-RELEASE"
 
 # Check for deluge-config and set configuration
 if ! [ -e $SCRIPTPATH/deluge-config ]; then
-  echo "$SCRIPTPATH/deluge-config must exist."
+  print_err "$SCRIPTPATH/deluge-config must exist."
   exit 1
 fi
 
@@ -43,37 +54,37 @@ if [ -z $DEFAULT_GW_IP ]; then
 fi
 if [ -z $INTERFACE ]; then
   INTERFACE="vnet0"
-  echo "INTERFACE defaulting to 'vnet0'"                                                        
+  print_msg "INTERFACE defaulting to 'vnet0'"                                                        
 fi
 if [ -z $VNET ]; then
   VNET="on"
-  echo "VNET defaulting to 'on'"
+  print_msg "VNET defaulting to 'on'"
 fi
 
 if [ -z $POOL_PATH ]; then
   POOL_PATH="/mnt/$(iocage get -p)"
-  echo "POOL_PATH defaulting to "$POOL_PATH
+  print_msg "POOL_PATH defaulting to "$POOL_PATH
 fi
 if [ -z $APPS_PATH ]; then
   APPS_PATH="apps"
-  echo "APPS_PATH defaulting to 'apps'"
+  print_msg "APPS_PATH defaulting to 'apps'"
 fi
 
 if [ -z $JAIL_NAME ]; then
   JAIL_NAME="deluge"
-  echo "JAIL_NAME defaulting to 'deluge'"
+  print_msg "JAIL_NAME defaulting to 'deluge'"
 fi
 if [ -z $DELUGE_DATA ]; then
   DELUGE_DATA="deluge"
-  echo "DELUGE_DATA defaulting to 'deluge'"
+  print_msg "DELUGE_DATA defaulting to 'deluge'"
 fi
 if [ -z $MEDIA_LOCATION ]; then
   MEDIA_LOCATION="media"
-  echo "MEDIA_LOCATION defaulting to 'media'"
+  print_msg "MEDIA_LOCATION defaulting to 'media'"
 fi
 if [ -z $TORRENTS_LOCATION ]; then
   TORRENTS_LOCATION="torrents"
-  echo "TORRENTS_LOCATION defaulting to 'torrents'"
+  print_msg "TORRENTS_LOCATION defaulting to 'torrents'"
 fi
 
 #
@@ -92,6 +103,7 @@ rm /tmp/pkg.json
 #mkdir -p ${PORTS_PATH}/ports
 #mkdir -p ${PORTS_PATH}/db
 
+print_msg "Creating directories and mount points"
 mkdir -p ${POOL_PATH}/${APPS_PATH}/${DELUGE_DATA}
 mkdir -p ${POOL_PATH}/${MEDIA_LOCATION}/videos/tvshows
 mkdir -p ${POOL_PATH}/${TORRENTS_LOCATION}
@@ -122,6 +134,7 @@ iocage fstab -a ${JAIL_NAME} ${POOL_PATH}/${TORRENTS_LOCATION} /mnt/torrents nul
  
 iocage restart ${JAIL_NAME}
 # add media user
+print_msg "Add media user"
 iocage exec ${JAIL_NAME} "pw user add media -c media -u 8675309  -d /config -s /usr/bin/nologin"  
 # add media group to media user
 #iocage exec ${JAIL_NAME} pw groupadd -n media -g 8675309
@@ -139,6 +152,7 @@ iocage exec ${JAIL_NAME} sysrc deluge_web_group=media
 iocage exec ${JAIL_NAME} sysrc deluge_web_confdir=/config
 
 # copy openvpn files from configs dir
+print_msg "Copy OpenVPN files and Create tunnel interface"
 iocage exec ${JAIL_NAME} cp -f /mnt/configs/ipfw_rules /config/ipfw_rules
 iocage exec ${JAIL_NAME} cp -f /mnt/configs/openvpn.conf /config/openvpn.conf
 iocage exec ${JAIL_NAME} cp -f /mnt/configs/pass.privado.txt /config/pass.privado.txt
@@ -180,9 +194,20 @@ iocage exec ${JAIL_NAME} sed -i '' "s|${old2_user}|${new2_user}|" /usr/local/etc
 iocage exec ${JAIL_NAME} chown -R media:media /config
 iocage exec ${JAIL_NAME} service deluged start
 iocage exec ${JAIL_NAME} service deluge_web start
+
+# Adjust core.conf settings
+print_msg "Adjust default settings for deluge"
 iocage exec ${JAIL_NAME} service deluged stop
 #iocage exec ${JAIL_NAME} service deluge_web stop
 iocage exec ${JAIL_NAME} sed -i '' 's|"/Downloads"|"/mnt/torrents/deluge"|g' /config/core.conf
+echo "*********************"
+if [ $SEED == "NO" ]; then
+   iocage exec ${JAIL_NAME} sed -i '' 's|"seed_time_ratio_limit": 7|"seed_time_ratio_limit": 0|' /config/core.conf
+   iocage exec ${JAIL_NAME} sed -i '' 's|"seed_time_limit": 180|"seed_time_limit": 0|' /config/core.conf
+   iocage exec ${JAIL_NAME} sed -i '' 's|"share_ratio_limit": 2|"share_ratio_limit": 0|' /config/core.conf
+   iocage exec ${JAIL_NAME} sed -i '' 's|"stop_seed_ratio": 2|"stop_seed_ratio": 0|' /config/core.conf
+   iocage exec ${JAIL_NAME} sed -i '' 's|"stop_seed_at_ratio": false|"stop_seed_at_ratio": true|' /config/core.conf
+fi
 iocage exec ${JAIL_NAME} service deluged start
 #iocage restart ${JAIL_NAME} 
 echo "deluge should be available at http://${JAIL_IP}:8112"
